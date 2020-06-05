@@ -1,0 +1,14 @@
+{
+  "name": "primer-juego",
+  "version": "1.0.0",
+  "description": "Primer Juego con Phaser",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "StormPyro",
+  "license": "ISC",
+  "dependencies": {
+    "phaser": "^3.23.0"
+  }
+}

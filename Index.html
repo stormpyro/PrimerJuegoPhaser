@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Mi Primer Juego usando Phaser</title>
+		<script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+		<style type="text/css">
+			body {
+				margin: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+			let cursors;
+			let player;
+			let platforms;
+			let stars;
+			let score = 0;
+			let scoreText;
+			let bombs;
+			let gameOver;
+			var config = {
+				type: Phaser.AUTO,
+				width: 800,
+				height: 600,
+				physics: {
+					default: "arcade",
+					arcade: {
+						gravity: { y: 300 },
+						debug: false,
+					},
+				},
+				scene: {
+					preload: preload,
+					create: create,
+					update: update,
+				},
+			};
+
+			var game = new Phaser.Game(config);
+
+			function preload() {
+				this.load.image("sky", "assets/sky.png");
+				this.load.image("ground", "assets/platform.png");
+				this.load.image("star", "assets/star.png");
+				this.load.image("bomb", "assets/bomb.png");
+				this.load.spritesheet("dude", "assets/dude.png", {
+					frameWidth: 32,
+					frameHeight: 48,
+				});
+				//spritesheet: Grupo de imagenes, varias img que representan movimiento
+			}
+
+			function create() {
+				this.add.image(400, 300, "sky");
+				platforms = this.physics.add.staticGroup();
+
+				platforms.create(400, 568, "ground").setScale(2).refreshBody();
+				//(posx,posy,id)
+				platforms.create(600, 400, "ground");
+				platforms.create(50, 250, "ground");
+				platforms.create(750, 220, "ground");
+
+				player = this.physics.add.sprite(100, 450, "dude");
+
+				player.setBounce(0.2);
+				player.setCollideWorldBounds(true);
+
+				this.anims.create({
+					key: "left",
+					frames: this.anims.generateFrameNumbers("dude", { start: 0, end: 3 }),
+					frameRate: 10,
+					repeat: -1,
+				});
+				/*
+                Ejemplo de animacion con sprite
+				this.anims.create({
+					key: "left",// Tecla que activa la animacion
+					frames: this.anims.generateFrameNumbers("dude", { start: 0, end: 3 }), //Fotogramas del sprite a usar
+					frameRate: 10, //frames por segundo
+					repeat: -1,// -1 indica, bucle infinito en la animacion
+				});
+                */
+
+				this.anims.create({
+					key: "turn",
+					frames: [{ key: "dude", frame: 4 }],
+					frameRate: 20,
+				});
+
+				this.anims.create({
+					key: "right",
+					frames: this.anims.generateFrameNumbers("dude", { start: 5, end: 8 }),
+					frameRate: 10,
+					repeat: -1,
+				});
+				this.physics.add.collider(player, platforms);
+				cursors = this.input.keyboard.createCursorKeys();
+
+				stars = this.physics.add.group({
+					key: "star",
+					repeat: 11,
+					setXY: { x: 12, y: 0, stepX: 70 },
+				});
+
+				stars.children.iterate(function (child) {
+					child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+				});
+				/* stars = this.physics.add.group({
+    key: 'star',
+    repeat: 11, // 1 estrella que se repita 11 veces mas = 12
+    setXY: { x: 12, y: 0, stepX: 70 }//Ubicadas a partir del eje x 12 y 0 cada 70 px en el eje x
+});
+
+stars.children.iterate(function (child) {
+
+    child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8)); Aplica un rebote a las estrellas en el eje y aleatorio entre 0.4 y 0.8
+
+});  */
+
+				this.physics.add.collider(stars, platforms); //collider
+				this.physics.add.overlap(player, stars, collectStar, null, this); //overlap: evalua superposicion entre player y star
+				//ejecuta collectStar si es true. Collectstar lleva como parametros los 2 elementos evaluados por overlap
+				function collectStar(player, star) {
+					star.disableBody(true, true);
+					score += 10;
+					scoreText.setText("Score: " + score); //Actualizar puntuacion se hizo en el create y no en el update
+					if (stars.countActive(true) === 0) {
+						//Cuenta cuantas estrellas quedan
+						stars.children.iterate(function (child) {
+							child.enableBody(true, child.x, 0, true, true); //Vuelve a crear las estrellas
+						});
+						crearBombas();
+					}
+				}
+
+				let bombas = this.physics.add.group({
+					key: "bomb",
+					repeat: 3,
+					setXY: { x: 12, y: 0, stepX: 70 },
+				});
+				bombas.children.iterate(function (child) {
+					child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8)); //Da un y aleatorio
+					child.setCollideWorldBounds(true); //Hace que no se salga de la pantalla
+					child.setVelocity(Phaser.Math.Between(-200, 200), 20); //Da movimiento al elemento
+					child.setBounce(1); //Hace rebotar al elemento
+				});
+				this.physics.add.collider(bombas, platforms);
+				function crearBombas() {
+					var x =
+						player.x < 400
+							? Phaser.Math.Between(400, 800)
+							: Phaser.Math.Between(0, 400); //x es una coordenada aleatoria
+					//Crea la bomba
+					for (let index = 0; index < 4; index++) {
+						var bomb = bombs.create(x, 16, "bomb");
+						bomb.setBounce(1);
+						bomb.setCollideWorldBounds(true);
+						bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+					}
+				}
+
+				scoreText = this.add.text(16, 16, "Score: 0", {
+					fontSize: "32px",
+					fill: "#000",
+				});
+				/*
+                    AGREGAR TEXTO
+                 scoreText = this.add.text(16, 16, "Score: 0", {
+					fontSize: "32px",
+					fill: "#000",
+				}); */
+
+				bombs = this.physics.add.group();
+				this.physics.add.collider(bombs, platforms);
+				this.physics.add.collider(player, bombas, hitBomb, null, this);
+				this.physics.add.collider(player, bombs, hitBomb, null, this);
+				function hitBomb(player, bomb) {
+					this.physics.pause(); //Detiene el juego
+
+					player.setTint(0xff0000); //Pinta de rojo al personaje
+
+					player.anims.play("turn"); //Ejecuta la animacion turn
+
+					gameOver = true;
+				} //HitBomb lleva como parametros los 2 elementos evaluados por collider
+			}
+
+			function update(time, delta) {
+				if (cursors.left.isDown) {
+					player.setVelocityX(-160);
+
+					player.anims.play("left", true);
+				} else if (cursors.right.isDown) {
+					player.setVelocityX(160);
+
+					player.anims.play("right", true);
+				} else {
+					player.setVelocityX(0);
+
+					player.anims.play("turn");
+				}
+
+				if (cursors.up.isDown && player.body.touching.down) {
+					player.setVelocityY(-310);
+				}
+			}
+		</script>
+	</body>
+</html>
